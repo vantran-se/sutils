@@ -1,0 +1,20 @@
+{
+  "name": "sutils",
+  "version": "1.0.0",
+  "description": "Server utilities — monitor connections, auto-shutdown, and more",
+  "main": "src/index.js",
+  "bin": {
+    "sutils": "./bin/sutils.js"
+  },
+  "scripts": {
+    "start": "node bin/sutils.js"
+  },
+  "keywords": ["server", "monitor", "auto-shutdown", "devops", "cost-saving", "sutils"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

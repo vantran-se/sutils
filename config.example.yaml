@@ -1,0 +1,17 @@
+# server-monitor configuration
+
+# How often to check for active connections (seconds)
+check_interval: 60
+
+# How long all ports must be idle before shutdown is triggered (seconds)
+# This prevents shutdown from brief disconnects
+grace_period: 300
+
+# Command to run when shutting down the server
+shutdown_command: "sudo shutdown -h now"
+
+# List of ports to monitor
+# Shutdown triggers only when ALL ports have zero established connections
+ports:
+  - 22    # SSH – someone is logged in
+  - 3000  # your app port
