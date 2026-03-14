@@ -29,14 +29,17 @@ Auto-shutdown your server when all monitored ports have been idle for a configur
 ### Quick start
 
 ```bash
-# Create a config file in your current directory
-npx sutils monitor init
+# 1. Create a config file
+sudo mkdir -p /etc/sutils
+npx @vantran-se/sutils monitor init
+sudo mv config.yaml /etc/sutils/config.yaml
 
-# Edit the config
-nano config.yaml
+# 2. Edit the config
+sudo nano /etc/sutils/config.yaml
 
-# Start monitoring
-npx sutils monitor start
+# 3. Install and start as a systemd service
+sudo npx @vantran-se/sutils monitor enable --config /etc/sutils/config.yaml
+sudo sutils monitor start
 ```
 
 ### Configuration
@@ -72,53 +75,51 @@ ports:
 sutils monitor <subcommand> [options]
 
 Subcommands:
-  init     Create a starter config.yaml in the current directory
-  start    Start monitoring
+  init      Create a starter config.yaml in the current directory
+  run       Run the monitor process directly in the foreground
+
+  enable    Install and enable the systemd service
+  disable   Stop and remove the service from boot
+  start     Enable on boot and start the service now
+  stop      Stop the service (stays enabled, restarts on reboot)
+  status    Show systemd service status
 
 Options:
   --config <path>   Path to config file (default: ./config.yaml)
-  --dry-run         Log what would happen without executing shutdown
+  --dry-run         Log what would happen without executing shutdown (run only)
 ```
 
-### Examples
+### Systemd service workflow
 
 ```bash
-# Use a custom config path
-sutils monitor start --config /etc/sutils/config.yaml
+# Install the service and start it (enable + start in one step)
+sudo sutils monitor enable --config /etc/sutils/config.yaml
+sudo sutils monitor start
 
-# Test your config without risk — won't actually shut down
-sutils monitor start --dry-run
+# Day-to-day controls
+sudo sutils monitor stop      # stop now, restarts on next reboot
+sudo sutils monitor start     # start again (re-enables on boot too)
+sudo sutils monitor status    # check if running
+
+# Remove from boot entirely
+sudo sutils monitor disable
 ```
 
-### Running as a background service
+> `start` always enables on boot. To stop temporarily without affecting boot behaviour, use `stop`.
 
-#### systemd (recommended for Linux servers)
-
-Create `/etc/systemd/system/sutils-monitor.service`:
-
-```ini
-[Unit]
-Description=sutils monitor
-After=network.target
-
-[Service]
-ExecStart=npx sutils monitor start --config /etc/sutils/config.yaml
-Restart=on-failure
-User=root
-
-[Install]
-WantedBy=multi-user.target
-```
+### Running the monitor directly (without systemd)
 
 ```bash
-sudo systemctl enable sutils-monitor
-sudo systemctl start sutils-monitor
-sudo systemctl status sutils-monitor
+# Useful for testing or non-systemd environments
+sutils monitor run --config ./config.yaml
+
+# Safe test — logs what would happen without shutting down
+sutils monitor run --dry-run
 ```
 
-#### Permissions for shutdown
+### Permissions for shutdown
 
-The process needs permission to run the shutdown command. Either run as root, or grant the user passwordless sudo for shutdown:
+The service needs permission to run the shutdown command. Either run as root, or grant passwordless sudo for shutdown:
 
 ```bash
 # /etc/sudoers.d/sutils
