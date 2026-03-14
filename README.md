@@ -1,5 +1,8 @@
 # sutils
 
+[![CI](https://github.com/vantran-se/sutils/actions/workflows/ci.yml/badge.svg)](https://github.com/vantran-se/sutils/actions/workflows/ci.yml)
+[![Publish](https://github.com/vantran-se/sutils/actions/workflows/publish.yml/badge.svg)](https://github.com/vantran-se/sutils/actions/workflows/publish.yml)
+
 Server utilities CLI — a collection of tools for managing and maintaining servers.
 
 ## Commands
