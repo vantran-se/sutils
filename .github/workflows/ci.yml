@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax
+        run: node --check bin/sutils.js src/commands/monitor/index.js src/commands/monitor/start.js src/commands/monitor/monitor.js src/commands/monitor/shutdown.js src/commands/monitor/init.js
+
+      - name: Smoke test CLI
+        run: |
+          node bin/sutils.js --help
+          node bin/sutils.js monitor --help
