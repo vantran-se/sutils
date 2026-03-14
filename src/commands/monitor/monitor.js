@@ -1,20 +1,21 @@
 const { execSync } = require('child_process');
 
-function parseLocalPort(addressPort) {
-  const lastColon = addressPort.lastIndexOf(':');
-  if (lastColon === -1) return NaN;
-  return parseInt(addressPort.substring(lastColon + 1), 10);
-}
+// Match the first addr:port pair in a line (local address).
+// Handles IPv4 (1.2.3.4:80), IPv6 ([::1]:80), and wildcard (*:80).
+// Column order varies across ss versions, so we use regex instead of index.
+const LOCAL_PORT_RE = /(?:[\d.[\]a-fA-F:*]+):(\d+)\s+(?:[\d.[\]a-fA-F:*]+):\d+/;
 
 function getConnectionsViaSS() {
   const output = execSync('ss -tn state established', { encoding: 'utf8' });
   const ports = [];
 
-  for (const line of output.trim().split('\n').slice(1)) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length < 5) continue;
-    const port = parseLocalPort(parts[3]);
-    if (!isNaN(port)) ports.push(port);
+  for (const line of output.trim().split('\n')) {
+    if (line.includes('Local Address')) continue; // skip header
+    const match = line.match(LOCAL_PORT_RE);
+    if (match) {
+      const port = parseInt(match[1], 10);
+      if (port > 0 && port <= 65535) ports.push(port);
+    }
   }
 
   return ports;
@@ -28,10 +29,11 @@ function getConnectionsViaNetstat() {
   const ports = [];
 
   for (const line of output.trim().split('\n')) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length < 6) continue;
-    const port = parseLocalPort(parts[3]);
-    if (!isNaN(port)) ports.push(port);
+    const match = line.match(LOCAL_PORT_RE);
+    if (match) {
+      const port = parseInt(match[1], 10);
+      if (port > 0 && port <= 65535) ports.push(port);
+    }
   }
 
   return ports;
