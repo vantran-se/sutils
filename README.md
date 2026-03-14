@@ -41,8 +41,9 @@ sudo mv config.yaml /etc/sutils/config.yaml
 sudo nano /etc/sutils/config.yaml
 
 # 3. Install and start as a systemd service
-sudo npx @vantran-se/sutils monitor enable --config /etc/sutils/config.yaml
-sudo sutils monitor start
+
+sutils monitor enable --config /etc/sutils/config.yaml
+sutils monitor start
 ```
 
 ### Configuration
@@ -96,16 +97,14 @@ Options:
 
 ```bash
 # Install the service and start it (enable + start in one step)
-sudo sutils monitor enable --config /etc/sutils/config.yaml
-sudo sutils monitor start
+sutils monitor enable --config /etc/sutils/config.yaml
+sutils monitor start
 
 # Day-to-day controls
-sudo sutils monitor stop      # stop now, restarts on next reboot
-sudo sutils monitor start     # start again (re-enables on boot too)
-sudo sutils monitor status    # check if running
-
-# Remove from boot entirely
-sudo sutils monitor disable
+sutils monitor stop      # stop now, restarts on next reboot
+sutils monitor start     # start again (re-enables on boot too)
+sutils monitor status                        # status doesn't need root
+sutils monitor disable   # remove from boot
 ```
 
 > `start` always enables on boot. To stop temporarily without affecting boot behaviour, use `stop`.

@@ -6,7 +6,18 @@ const SERVICE_NAME = 'sutils-monitor';
 const SERVICE_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
 const DEFAULT_CONFIG = '/etc/sutils/config.yaml';
 
+function requireRoot() {
+  if (process.getuid && process.getuid() !== 0) {
+    const { execFileSync } = require('child_process');
+    console.log('[sutils] Requires root — re-running with sudo...');
+    execFileSync('sudo', ['-E', process.execPath, process.argv[1], ...process.argv.slice(2)], { stdio: 'inherit' });
+    process.exit(0);
+  }
+}
+
 function run(args) {
+  requireRoot(args);
+
   const configIdx = args.indexOf('--config');
   const configPath = configIdx !== -1 && args[configIdx + 1]
     ? path.resolve(args[configIdx + 1])
