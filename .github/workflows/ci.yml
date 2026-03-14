@@ -24,7 +24,7 @@ jobs:
         run: npm ci
 
       - name: Check syntax
-        run: node --check bin/sutils.js src/commands/monitor/index.js src/commands/monitor/start.js src/commands/monitor/monitor.js src/commands/monitor/shutdown.js src/commands/monitor/init.js
+        run: node --check bin/sutils.js src/commands/monitor/index.js src/commands/monitor/run.js src/commands/monitor/monitor.js src/commands/monitor/shutdown.js src/commands/monitor/init.js src/commands/monitor/enable.js src/commands/monitor/disable.js src/commands/monitor/start.js src/commands/monitor/stop.js src/commands/monitor/status.js
 
       - name: Smoke test CLI
         run: |
