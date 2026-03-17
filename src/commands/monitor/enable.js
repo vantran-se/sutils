@@ -4,7 +4,7 @@ const { execSync } = require('child_process');
 
 const SERVICE_NAME = 'sutils-monitor';
 const SERVICE_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
-const DEFAULT_CONFIG = '/etc/sutils/config.yaml';
+const DEFAULT_CONFIG = path.join(process.cwd(), 'config.yaml');
 
 function requireRoot() {
   if (process.getuid && process.getuid() !== 0) {
@@ -65,3 +65,4 @@ WantedBy=multi-user.target
 }
 
 module.exports = { run };
+

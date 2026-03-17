@@ -31,7 +31,7 @@ Options:
 
 Examples:
   sutils monitor init
-  sutils monitor enable --config /etc/sutils/config.yaml
+  sutils monitor enable
   sutils monitor start
   sutils monitor status
   sutils monitor stop

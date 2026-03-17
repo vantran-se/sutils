@@ -14,7 +14,7 @@ function run() {
   fs.copyFileSync(src, dest);
   console.log(`Created config.yaml at: ${dest}`);
   console.log('Edit the file to set your ports, intervals, and shutdown command.');
-  console.log('Then run: sutils monitor start');
+  console.log('Then run: sutils monitor enable && sutils monitor start');
 }
 
 module.exports = { run };
