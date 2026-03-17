@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { DEFAULT_CONFIG } = require('../../paths');
 const requireRoot = require('../../lib/requireRoot');
 
@@ -45,8 +45,8 @@ WantedBy=multi-user.target
   console.log(`Wrote ${SERVICE_PATH}`);
 
   try {
-    execSync('systemctl daemon-reload', { stdio: 'inherit' });
-    execSync(`systemctl enable ${SERVICE_NAME}`, { stdio: 'inherit' });
+    execFileSync('systemctl', ['daemon-reload'], { stdio: 'inherit' });
+    execFileSync('systemctl', ['enable', SERVICE_NAME], { stdio: 'inherit' });
   } catch (err) {
     console.error(`systemctl failed: ${err.message}`);
     process.exit(1);
