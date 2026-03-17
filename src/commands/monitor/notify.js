@@ -30,7 +30,7 @@ function sendTelegram(botToken, chatId, text) {
  * Returns a notify(event, detail) function bound to the config.
  * If no notify config is present, returns a no-op.
  *
- * Events: 'shutdown' | 'error'
+ * Events: 'start' | 'idle' | 'reconnect' | 'shutdown' | 'error'
  */
 function buildNotifier(notifyConfig, log) {
   if (!notifyConfig || !notifyConfig.telegram) return () => {};
@@ -42,8 +42,16 @@ function buildNotifier(notifyConfig, log) {
   }
 
   const MESSAGES = {
-    shutdown: (d) => `🔴 <b>Shutting down</b>\n<code>${HOSTNAME}</code>\n${d}`,
-    error:    (d) => `⚠️ <b>Monitor error</b>\n<code>${HOSTNAME}</code>\n${d}`,
+    start: (d) =>
+      `🟢 <b>Monitor started</b>\n<code>${HOSTNAME}</code>\nWatching ports: ${d}`,
+    idle: (d) =>
+      `💤 <b>Idle detected</b>\n<code>${HOSTNAME}</code>\nGrace period: ${d}`,
+    reconnect: (d) =>
+      `🔌 <b>Connection restored</b>\n<code>${HOSTNAME}</code>\nActive port(s): ${d}`,
+    shutdown: (d) =>
+      `🔴 <b>Shutting down</b>\n<code>${HOSTNAME}</code>\n${d}`,
+    error: (d) =>
+      `⚠️ <b>Monitor error</b>\n<code>${HOSTNAME}</code>\n${d}`,
   };
 
   return function notify(event, detail = '') {
