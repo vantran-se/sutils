@@ -55,7 +55,7 @@ sutils monitor start
 check_interval: 60
 
 # How long all ports must be idle before shutdown is triggered (seconds)
-grace_period: 300
+grace_period: 900
 
 # Command to run when shutting down
 shutdown_command: "sudo shutdown -h now"

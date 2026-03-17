@@ -5,7 +5,7 @@ check_interval: 60
 
 # How long all ports must be idle before shutdown is triggered (seconds)
 # This prevents shutdown from brief disconnects
-grace_period: 300
+grace_period: 900
 
 # Command to run when shutting down the server
 shutdown_command: "sudo shutdown -h now"
@@ -15,3 +15,10 @@ shutdown_command: "sudo shutdown -h now"
 ports:
   - 22    # SSH – someone is logged in
   - 3000  # your app port
+
+# Optional: Telegram notifications
+# Events notified: monitor start, idle detected, connection restored, shutdown
+# notify:
+#   telegram:
+#     bot_token: "123456:ABC-your-bot-token"
+#     chat_id: "your-chat-id"

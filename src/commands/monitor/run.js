@@ -2,6 +2,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const { checkPorts } = require('./monitor');
 const { executeShutdown } = require('./shutdown');
+const { buildNotifier } = require('./notify');
 
 function loadConfig(configPath) {
   if (!fs.existsSync(configPath)) {
@@ -44,14 +45,18 @@ function run({ configPath, dryRun }) {
   const checkIntervalMs = check_interval * 1000;
   const gracePeriodMs = grace_period * 1000;
 
+  const notify = buildNotifier(config.notify, log);
+
   log(`Starting monitor (config: ${configPath})`);
   log(`Monitoring ports: ${ports.join(', ')}`);
   log(`Check interval: ${check_interval}s | Grace period: ${grace_period}s`);
   if (dryRun) log('DRY RUN mode – shutdown will be logged but not executed');
 
+  notify('start', ports.join(', '));
+
   let idleSince = null;
 
-  function check() {
+  async function check() {
     let result;
 
     try {
@@ -64,6 +69,7 @@ function run({ configPath, dryRun }) {
     if (result.hasActiveConnections) {
       if (idleSince !== null) {
         log(`Connection detected on port(s): ${result.activeMonitored.join(', ')} — resetting idle timer`);
+        notify('reconnect', result.activeMonitored.join(', '));
       } else {
         log(`Active connections on port(s): ${result.activeMonitored.join(', ')}`);
       }
@@ -74,12 +80,14 @@ function run({ configPath, dryRun }) {
       if (idleSince === null) {
         idleSince = now;
         log(`No active connections on any monitored port — starting grace period (${grace_period}s)`);
+        notify('idle', `${grace_period}s`);
       }
 
       const idleSec = Math.floor((now - idleSince) / 1000);
       log(`Idle for ${idleSec}s / ${grace_period}s`);
 
       if (now - idleSince >= gracePeriodMs) {
+        await notify('shutdown', `Idle for ${idleSec}s`);
         executeShutdown(shutdown_command, dryRun);
         if (!dryRun) process.exit(0);
         idleSince = null;
