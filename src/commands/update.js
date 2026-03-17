@@ -1,12 +1,10 @@
 const { execFileSync } = require('child_process');
-const requireRoot = require('../lib/requireRoot');
-const { listEnabledServices, applyToServices } = require('../lib/listServices');
+const { listEnabledServices } = require('../lib/listServices');
 
 function run() {
-  requireRoot();
-
   const { name } = require('../../package.json');
 
+  // npm must run as the current user (nvm/user-local installs won't work as root)
   console.log(`Updating ${name}...`);
   execFileSync('npm', ['install', '-g', `${name}@latest`], { stdio: 'inherit' });
 
@@ -16,8 +14,12 @@ function run() {
     return;
   }
 
+  // systemctl requires root — escalate only for this step
   console.log('\nRestarting services...');
-  applyToServices(services, ['restart'], 'Restarting', 'restarted');
+  execFileSync(
+    'sudo', ['-E', process.execPath, process.argv[1], 'restart'],
+    { stdio: 'inherit' }
+  );
 }
 
 module.exports = { run };
