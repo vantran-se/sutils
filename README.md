@@ -32,17 +32,14 @@ Auto-shutdown your server when all monitored ports have been idle for a configur
 ### Quick start
 
 ```bash
-# 1. Create a config file
-sudo mkdir -p /etc/sutils
-npx @vantran-se/sutils monitor init
-sudo mv config.yaml /etc/sutils/config.yaml
+# 1. Create a config file at ~/.sutils/config.yaml
+sutils monitor init
 
 # 2. Edit the config
-sudo nano /etc/sutils/config.yaml
+nano ~/.sutils/config.yaml
 
 # 3. Install and start as a systemd service
-
-sutils monitor enable --config /etc/sutils/config.yaml
+sutils monitor enable
 sutils monitor start
 ```
 
@@ -79,7 +76,7 @@ ports:
 sutils monitor <subcommand> [options]
 
 Subcommands:
-  init      Create a starter config.yaml in the current directory
+  init      Create a starter config.yaml in ~/.sutils/
   run       Run the monitor process directly in the foreground
 
   enable    Install and enable the systemd service
@@ -89,7 +86,7 @@ Subcommands:
   status    Show systemd service status
 
 Options:
-  --config <path>   Path to config file (default: ./config.yaml)
+  --config <path>   Path to config file (default: ~/.sutils/config.yaml)
   --dry-run         Log what would happen without executing shutdown (run only)
 ```
 
@@ -97,7 +94,7 @@ Options:
 
 ```bash
 # Install the service and start it (enable + start in one step)
-sutils monitor enable --config /etc/sutils/config.yaml
+sutils monitor enable
 sutils monitor start
 
 # Day-to-day controls
@@ -113,7 +110,7 @@ sutils monitor disable   # remove from boot
 
 ```bash
 # Useful for testing or non-systemd environments
-sutils monitor run --config ./config.yaml
+sutils monitor run
 
 # Safe test — logs what would happen without shutting down
 sutils monitor run --dry-run

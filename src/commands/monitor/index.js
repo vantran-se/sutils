@@ -1,11 +1,12 @@
 const path = require('path');
+const { DEFAULT_CONFIG } = require('../../paths');
 
 function getConfigPath(args) {
   const idx = args.indexOf('--config');
   if (idx !== -1 && args[idx + 1]) {
     return path.resolve(args[idx + 1]);
   }
-  return path.join(process.cwd(), 'config.yaml');
+  return DEFAULT_CONFIG;
 }
 
 function printHelp() {
@@ -16,7 +17,7 @@ Usage:
   sutils monitor <subcommand> [options]
 
 Subcommands:
-  init      Create a starter config.yaml in the current directory
+  init      Create a starter config.yaml in ~/.sutils/
   run       Run the monitor process directly (foreground)
 
   enable    Install and enable the systemd service
@@ -26,7 +27,7 @@ Subcommands:
   status    Show systemd service status
 
 Options:
-  --config <path>   Path to config file (default: ./config.yaml)
+  --config <path>   Path to config file (default: ~/.sutils/config.yaml)
   --dry-run         Log what would happen without executing shutdown (run only)
 
 Examples:

@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { DEFAULT_CONFIG } = require('../../paths');
 
 const SERVICE_NAME = 'sutils-monitor';
 const SERVICE_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
-const DEFAULT_CONFIG = path.join(process.cwd(), 'config.yaml');
 
 function requireRoot() {
   if (process.getuid && process.getuid() !== 0) {
