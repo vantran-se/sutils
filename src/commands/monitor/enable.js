@@ -2,18 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { DEFAULT_CONFIG } = require('../../paths');
+const requireRoot = require('../../lib/requireRoot');
 
 const SERVICE_NAME = 'sutils-monitor';
 const SERVICE_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
-
-function requireRoot() {
-  if (process.getuid && process.getuid() !== 0) {
-    const { execFileSync } = require('child_process');
-    console.log('[sutils] Requires root — re-running with sudo...');
-    execFileSync('sudo', ['-E', process.execPath, process.argv[1], ...process.argv.slice(2)], { stdio: 'inherit' });
-    process.exit(0);
-  }
-}
 
 function run(args) {
   requireRoot(args);

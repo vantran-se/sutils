@@ -69,7 +69,7 @@ function run({ configPath, dryRun }) {
     if (result.hasActiveConnections) {
       if (idleSince !== null) {
         log(`Connection detected on port(s): ${result.activeMonitored.join(', ')} — resetting idle timer`);
-        notify('reconnect', result.activeMonitored.join(', '));
+        // notify('reconnect', result.activeMonitored.join(', '));
       } else {
         log(`Active connections on port(s): ${result.activeMonitored.join(', ')}`);
       }

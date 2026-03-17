@@ -13,6 +13,11 @@ Usage:
 
 Commands:
   monitor   Monitor port connections and auto-shutdown when idle
+  startup   Register scripts to run automatically at server boot
+  restart   Restart all enabled sutils services at once
+  disable   Stop and disable all enabled sutils services
+  update    Update sutils to latest and restart services
+  uninstall Stop services, remove them, and uninstall sutils
 
 Options:
   --version, -v   Print version number
@@ -25,6 +30,26 @@ Run "sutils <command> --help" for command-specific options.
 switch (command) {
   case 'monitor':
     require('../src/commands/monitor')(args.slice(1));
+    break;
+
+  case 'startup':
+    require('../src/commands/startup')(args.slice(1));
+    break;
+
+  case 'restart':
+    require('../src/commands/restart').run();
+    break;
+
+  case 'disable':
+    require('../src/commands/disable').run();
+    break;
+
+  case 'update':
+    require('../src/commands/update').run();
+    break;
+
+  case 'uninstall':
+    require('../src/commands/uninstall').run();
     break;
 
   case '--version':

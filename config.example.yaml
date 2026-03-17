@@ -22,3 +22,14 @@ ports:
 #   telegram:
 #     bot_token: "123456:ABC-your-bot-token"
 #     chat_id: "your-chat-id"
+
+# Optional: scripts to run automatically at server boot (sutils startup)
+# Each script is registered as a systemd one-shot service.
+# scripts:
+#   - name: setup-env
+#     run: /home/ubuntu/setup-env.sh
+#     # user: ubuntu
+#
+#   - name: start-app
+#     run: /home/ubuntu/start-app.sh
+#     # user: ubuntu
