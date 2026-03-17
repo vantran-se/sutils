@@ -1,6 +1,6 @@
 {
   "name": "@vantran-se/sutils",
-  "version": "1.1.18",
+  "version": "1.1.19",
   "description": "Server utilities — monitor connections, auto-shutdown, and more",
   "files": [
     "bin/",
