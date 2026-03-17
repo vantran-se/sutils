@@ -52,8 +52,6 @@ function run({ configPath, dryRun }) {
   log(`Check interval: ${check_interval}s | Grace period: ${grace_period}s`);
   if (dryRun) log('DRY RUN mode – shutdown will be logged but not executed');
 
-  notify('start', ports.join(', '));
-
   let idleSince = null;
 
   async function check() {
@@ -63,6 +61,7 @@ function run({ configPath, dryRun }) {
       result = checkPorts(ports);
     } catch (err) {
       log(`ERROR checking connections: ${err.message}`);
+      notify('error', err.message);
       return;
     }
 
@@ -80,7 +79,7 @@ function run({ configPath, dryRun }) {
       if (idleSince === null) {
         idleSince = now;
         log(`No active connections on any monitored port — starting grace period (${grace_period}s)`);
-        notify('idle', `${grace_period}s`);
+        // notify('idle', `${grace_period}s`);
       }
 
       const idleSec = Math.floor((now - idleSince) / 1000);
