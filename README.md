@@ -43,7 +43,7 @@ sutils monitor start         # start it now
 
 ```yaml
 check_interval: 60           # seconds between connection checks
-grace_period: 900            # seconds idle before shutdown (15 min)
+grace_checks: 15             # number of idle checks before shutdown
 shutdown_command: "sudo shutdown -h now"
 
 ports:

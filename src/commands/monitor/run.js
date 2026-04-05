@@ -22,8 +22,8 @@ function loadConfig(configPath) {
     console.error('Config error: "check_interval" must be a positive number (seconds).');
     process.exit(1);
   }
-  if (typeof config.grace_period !== 'number' || config.grace_period <= 0) {
-    console.error('Config error: "grace_period" must be a positive number (seconds).');
+  if (typeof config.grace_checks !== 'number' || config.grace_checks <= 0 || !Number.isInteger(config.grace_checks)) {
+    console.error('Config error: "grace_checks" must be a positive integer (number of idle checks before shutdown).');
     process.exit(1);
   }
   if (typeof config.shutdown_command !== 'string' || !config.shutdown_command.trim()) {
@@ -41,18 +41,17 @@ function log(message) {
 function run({ configPath, dryRun }) {
   const config = loadConfig(configPath);
 
-  const { ports, check_interval, grace_period, shutdown_command } = config;
+  const { ports, check_interval, grace_checks, shutdown_command } = config;
   const checkIntervalMs = check_interval * 1000;
-  const gracePeriodMs = grace_period * 1000;
 
   const notify = buildNotifier(config.notify, log);
 
   log(`Starting monitor (config: ${configPath})`);
   log(`Monitoring ports: ${ports.join(', ')}`);
-  log(`Check interval: ${check_interval}s | Grace period: ${grace_period}s`);
+  log(`Check interval: ${check_interval}s | Grace checks: ${grace_checks}`);
   if (dryRun) log('DRY RUN mode – shutdown will be logged but not executed');
 
-  let idleSince = null;
+  let idleCount = 0;
 
   async function check() {
     let result;
@@ -66,30 +65,28 @@ function run({ configPath, dryRun }) {
     }
 
     if (result.hasActiveConnections) {
-      if (idleSince !== null) {
-        log(`Connection detected on port(s): ${result.activeMonitored.join(', ')} — resetting idle timer`);
+      if (idleCount > 0) {
+        log(`Connection detected on port(s): ${result.activeMonitored.join(', ')} — resetting idle counter`);
         // notify('reconnect', result.activeMonitored.join(', '));
       } else {
         log(`Active connections on port(s): ${result.activeMonitored.join(', ')}`);
       }
-      idleSince = null;
+      idleCount = 0;
     } else {
-      const now = Date.now();
+      idleCount++;
 
-      if (idleSince === null) {
-        idleSince = now;
-        log(`No active connections on any monitored port — starting grace period (${grace_period}s)`);
-        // notify('idle', `${grace_period}s`);
+      if (idleCount === 1) {
+        log(`No active connections on any monitored port — starting grace period (${grace_checks} checks)`);
+        // notify('idle', `${grace_checks} checks`);
       }
 
-      const idleSec = Math.floor((now - idleSince) / 1000);
-      log(`Idle for ${idleSec}s / ${grace_period}s`);
+      log(`Idle check ${idleCount} / ${grace_checks}`);
 
-      if (now - idleSince >= gracePeriodMs) {
-        await notify('shutdown', `Idle for ${idleSec}s`);
+      if (idleCount >= grace_checks) {
+        await notify('shutdown', `Idle for ${idleCount} checks`);
         executeShutdown(shutdown_command, dryRun);
         if (!dryRun) process.exit(0);
-        idleSince = null;
+        idleCount = 0;
       }
     }
   }

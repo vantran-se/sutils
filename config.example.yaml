@@ -1,14 +1,15 @@
 # server-monitor configuration
 
 # How often to check for active connections (seconds)
-check_interval: 60
+check_interval: 180
 
-# How long all ports must be idle before shutdown is triggered (seconds)
+# Number of consecutive idle checks before shutdown is triggered
 # This prevents shutdown from brief disconnects
-grace_period: 900
+# Example: with check_interval=180 and grace_checks=10, shutdown after 30 minutes idle
+grace_checks: 10
 
 # Command to run when shutting down the server
-shutdown_command: "sudo shutdown -h now"
+shutdown_command: "sudo suspend now"
 
 # List of ports to monitor
 # Shutdown triggers only when ALL ports have zero established connections
