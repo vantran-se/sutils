@@ -5,8 +5,8 @@ const net = require('net');
 // Handles IPv4 (1.2.3.4:80), IPv6 ([::1]:80), and wildcard (*:80)
 const LOCAL_PORT_RE = /(?:[\d.[\]a-fA-F:*]+):(\d+)\s+(?:[\d.[\]a-fA-F:*]+):\d+/;
 
-// Connection states that indicate a potentially dead or dying connection
-const DEAD_STATES = ['close-wait', 'time-wait', 'fin-wait-1', 'fin-wait-2', 'closing', 'last-ack', 'syn-sent', 'syn-recv'];
+// Connection states that indicate a dead connection (terminal states)
+const DEAD_STATES = ['close-wait', 'time-wait', 'fin-wait-1', 'fin-wait-2', 'closing', 'last-ack'];
 
 function getConnectionsViaSS(states = ['established']) {
   const stateFilter = states.map(s => `state ${s}`).join(' ');
@@ -44,9 +44,10 @@ function getConnectionsViaNetstat() {
 }
 
 function getAllConnectionStates() {
-  // Get all TCP connections with their states using ss
+  // Get all TCP connections with their states and timer info using ss -tno
+  // The -o flag shows timer information including idle time
   try {
-    const output = execSync('ss -tn state all', { encoding: 'utf8' });
+    const output = execSync('ss -tno state all', { encoding: 'utf8' });
     const connections = [];
 
     for (const line of output.trim().split('\n')) {
@@ -58,7 +59,15 @@ function getAllConnectionStates() {
           // Extract the connection state (last word in the line)
           const parts = line.trim().split(/\s+/);
           const state = parts[parts.length - 1].toLowerCase();
-          connections.push({ port, state });
+
+          // Extract idle time from timer info (e.g., "timer:(idle,1200ms,0)")
+          let idleMs = 0;
+          const timerMatch = line.match(/timer:\((\w+),(\d+)ms/);
+          if (timerMatch) {
+            idleMs = parseInt(timerMatch[2], 10);
+          }
+
+          connections.push({ port, state, idleMs });
         }
       }
     }
@@ -123,13 +132,15 @@ async function checkPorts(monitoredPorts, options = {}) {
     timeoutMs = 1000,
     checkConnectivity = true,
     skipConnectivityPorts = [],
+    idleThresholdMs = 30000, // 30 seconds - connections idle longer than this are considered dead
   } = options;
 
   let activePorts = [];
   let allConnections = [];
-  let deadConnections = [];
+  let deadConnections = 0;
+  let idleConnections = 0;
 
-  // Step 1: Get all connections with their states
+  // Step 1: Get all connections with their states and idle times
   try {
     allConnections = getAllConnectionStates();
 
@@ -138,10 +149,27 @@ async function checkPorts(monitoredPorts, options = {}) {
       (conn) => !DEAD_STATES.includes(conn.state)
     );
 
-    activePorts = healthyConnections.map((conn) => conn.port);
+    // Count idle connections (ESTABLISHED but no activity for too long)
+    idleConnections = healthyConnections.filter(
+      (conn) => conn.idleMs > idleThresholdMs
+    ).length;
+
+    // Active ports = connections that are:
+    // 1. Not in a dead state
+    // 2. Not idle for too long (unless port is in skipConnectivityPorts)
+    activePorts = healthyConnections
+      .filter((conn) => {
+        if (skipConnectivityPorts.includes(conn.port)) {
+          // For skipped ports, only check state, not idle time
+          return true;
+        }
+        return conn.idleMs <= idleThresholdMs;
+      })
+      .map((conn) => conn.port);
+
     deadConnections = allConnections.filter((conn) =>
       DEAD_STATES.includes(conn.state)
-    );
+    ).length;
   } catch {
     try {
       activePorts = getConnectionsViaSS(['established']);
@@ -159,7 +187,6 @@ async function checkPorts(monitoredPorts, options = {}) {
   const activeMonitored = monitoredPorts.filter((p) => activePorts.includes(p));
 
   // Step 2: Verify active connections are actually reachable
-  // Skip connectivity test for specified ports (e.g., SSH to avoid false negatives)
   let verifiedPorts = activeMonitored;
   let unreachablePorts = [];
 
@@ -189,7 +216,8 @@ async function checkPorts(monitoredPorts, options = {}) {
 
   return {
     activeMonitored: verifiedPorts,
-    deadConnections: deadConnections.length,
+    deadConnections,
+    idleConnections,
     unreachablePorts,
     hasActiveConnections: verifiedPorts.length > 0,
   };
