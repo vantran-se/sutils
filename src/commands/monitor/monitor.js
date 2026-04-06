@@ -1,16 +1,20 @@
 const { execSync } = require('child_process');
+const net = require('net');
 
-// Match the first addr:port pair in a line (local address).
-// Handles IPv4 (1.2.3.4:80), IPv6 ([::1]:80), and wildcard (*:80).
-// Column order varies across ss versions, so we use regex instead of index.
+// Match Linux ss format: addr:port addr:port
+// Handles IPv4 (1.2.3.4:80), IPv6 ([::1]:80), and wildcard (*:80)
 const LOCAL_PORT_RE = /(?:[\d.[\]a-fA-F:*]+):(\d+)\s+(?:[\d.[\]a-fA-F:*]+):\d+/;
 
-function getConnectionsViaSS() {
-  const output = execSync('ss -tn state established', { encoding: 'utf8' });
+// Connection states that indicate a potentially dead or dying connection
+const DEAD_STATES = ['close-wait', 'time-wait', 'fin-wait-1', 'fin-wait-2', 'closing', 'last-ack', 'syn-sent', 'syn-recv'];
+
+function getConnectionsViaSS(states = ['established']) {
+  const stateFilter = states.map(s => `state ${s}`).join(' ');
+  const output = execSync(`ss -tn ${stateFilter}`, { encoding: 'utf8' });
   const ports = [];
 
   for (const line of output.trim().split('\n')) {
-    if (line.includes('Local Address')) continue; // skip header
+    if (line.includes('Local Address')) continue;
     const match = line.match(LOCAL_PORT_RE);
     if (match) {
       const port = parseInt(match[1], 10);
@@ -39,27 +43,140 @@ function getConnectionsViaNetstat() {
   return ports;
 }
 
-function checkPorts(monitoredPorts) {
-  let activePorts;
-
+function getAllConnectionStates() {
+  // Get all TCP connections with their states using ss
   try {
-    activePorts = getConnectionsViaSS();
+    const output = execSync('ss -tn state all', { encoding: 'utf8' });
+    const connections = [];
+
+    for (const line of output.trim().split('\n')) {
+      if (line.includes('Local Address')) continue;
+      const match = line.match(LOCAL_PORT_RE);
+      if (match) {
+        const port = parseInt(match[1], 10);
+        if (port > 0 && port <= 65535) {
+          // Extract the connection state (last word in the line)
+          const parts = line.trim().split(/\s+/);
+          const state = parts[parts.length - 1].toLowerCase();
+          connections.push({ port, state });
+        }
+      }
+    }
+
+    return connections;
+  } catch {
+    // Fallback to netstat (only reports ESTABLISHED, no state details)
+    return [];
+  }
+}
+
+function testPortConnectivity(port, timeoutMs = 1000) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
+
+    const cleanup = () => {
+      socket.destroy();
+    };
+
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve(false);
+      }
+    }, timeoutMs);
+
+    socket.on('connect', () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        cleanup();
+        resolve(true);
+      }
+    });
+
+    socket.on('error', () => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        resolve(false);
+      }
+    });
+
+    // Try to connect to localhost on the specified port
+    socket.connect(port, '127.0.0.1');
+  });
+}
+
+async function checkPortConnectivity(ports, timeoutMs = 1000) {
+  const results = [];
+  for (const port of ports) {
+    const isReachable = await testPortConnectivity(port, timeoutMs);
+    results.push({ port, reachable: isReachable });
+  }
+  return results;
+}
+
+async function checkPorts(monitoredPorts, options = {}) {
+  const {
+    timeoutMs = 1000,
+    checkConnectivity = true,
+  } = options;
+
+  let activePorts = [];
+  let allConnections = [];
+  let deadConnections = [];
+
+  // Step 1: Get all connections with their states
+  try {
+    allConnections = getAllConnectionStates();
+
+    // Filter out connections in dead/dying states
+    const healthyConnections = allConnections.filter(
+      (conn) => !DEAD_STATES.includes(conn.state)
+    );
+
+    activePorts = healthyConnections.map((conn) => conn.port);
+    deadConnections = allConnections.filter((conn) =>
+      DEAD_STATES.includes(conn.state)
+    );
   } catch {
     try {
-      activePorts = getConnectionsViaNetstat();
-    } catch (err) {
-      throw new Error(
-        `Could not run ss or netstat to check connections: ${err.message}`
-      );
+      activePorts = getConnectionsViaSS(['established']);
+    } catch {
+      try {
+        activePorts = getConnectionsViaNetstat();
+      } catch (err) {
+        throw new Error(
+          `Could not run ss or netstat to check connections: ${err.message}`
+        );
+      }
     }
   }
 
   const activeMonitored = monitoredPorts.filter((p) => activePorts.includes(p));
 
+  // Step 2: Verify active connections are actually reachable
+  let verifiedPorts = activeMonitored;
+  let unreachablePorts = [];
+
+  if (checkConnectivity && activeMonitored.length > 0) {
+    const connectivityResults = await checkPortConnectivity(activeMonitored, timeoutMs);
+    verifiedPorts = connectivityResults
+      .filter((r) => r.reachable)
+      .map((r) => r.port);
+    unreachablePorts = connectivityResults
+      .filter((r) => !r.reachable)
+      .map((r) => r.port);
+  }
+
   return {
-    activeMonitored,
-    hasActiveConnections: activeMonitored.length > 0,
+    activeMonitored: verifiedPorts,
+    deadConnections: deadConnections.length,
+    unreachablePorts,
+    hasActiveConnections: verifiedPorts.length > 0,
   };
 }
 
-module.exports = { checkPorts };
+module.exports = { checkPorts, checkPortConnectivity, getAllConnectionStates };
