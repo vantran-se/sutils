@@ -19,13 +19,9 @@ ports:
 
 # Optional: Skip connectivity test and idle timeout for specific ports
 # Useful for SSH (port 22) which uses its own keepalive mechanism
-# Without this, SSH connections may be marked idle even when actively used
-skip_connectivity_ports:
-  - 22
-
-# Optional: Idle threshold for non-skipped ports (milliseconds)
-# Connections idle longer than this are considered dead
-# idle_threshold_ms: 30000
+# Only enable this if you experience false idle detection on SSH
+# skip_connectivity_ports:
+#   - 22
 
 # Optional: Telegram notifications
 # Events notified: monitor start, idle detected, connection restored, shutdown
