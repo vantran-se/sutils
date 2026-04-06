@@ -122,6 +122,7 @@ async function checkPorts(monitoredPorts, options = {}) {
   const {
     timeoutMs = 1000,
     checkConnectivity = true,
+    skipConnectivityPorts = [],
   } = options;
 
   let activePorts = [];
@@ -158,17 +159,32 @@ async function checkPorts(monitoredPorts, options = {}) {
   const activeMonitored = monitoredPorts.filter((p) => activePorts.includes(p));
 
   // Step 2: Verify active connections are actually reachable
+  // Skip connectivity test for specified ports (e.g., SSH to avoid false negatives)
   let verifiedPorts = activeMonitored;
   let unreachablePorts = [];
 
   if (checkConnectivity && activeMonitored.length > 0) {
-    const connectivityResults = await checkPortConnectivity(activeMonitored, timeoutMs);
-    verifiedPorts = connectivityResults
-      .filter((r) => r.reachable)
-      .map((r) => r.port);
-    unreachablePorts = connectivityResults
-      .filter((r) => !r.reachable)
-      .map((r) => r.port);
+    const portsToTest = activeMonitored.filter(
+      (p) => !skipConnectivityPorts.includes(p)
+    );
+    const portsSkipped = activeMonitored.filter((p) =>
+      skipConnectivityPorts.includes(p)
+    );
+
+    // Skipped ports are considered reachable if they're in activeMonitored
+    verifiedPorts = [...portsSkipped];
+
+    if (portsToTest.length > 0) {
+      const connectivityResults = await checkPortConnectivity(portsToTest, timeoutMs);
+      verifiedPorts.push(
+        ...connectivityResults
+          .filter((r) => r.reachable)
+          .map((r) => r.port)
+      );
+      unreachablePorts = connectivityResults
+        .filter((r) => !r.reachable)
+        .map((r) => r.port);
+    }
   }
 
   return {

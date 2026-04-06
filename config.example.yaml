@@ -17,6 +17,13 @@ ports:
   - 22    # SSH – someone is logged in
   - 3000  # your app port
 
+# Optional: Skip connectivity test for specific ports
+# Useful for SSH (port 22) to avoid false negatives during active sessions
+# The connectivity test opens a new TCP connection, which may fail for SSH
+# even when the existing session is active.
+# skip_connectivity_ports:
+#   - 22
+
 # Optional: Telegram notifications
 # Events notified: monitor start, idle detected, connection restored, shutdown
 # notify:

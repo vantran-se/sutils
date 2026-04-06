@@ -41,7 +41,7 @@ function log(message) {
 function run({ configPath, dryRun }) {
   const config = loadConfig(configPath);
 
-  const { ports, check_interval, grace_checks, shutdown_command } = config;
+  const { ports, check_interval, grace_checks, shutdown_command, skip_connectivity_ports } = config;
   const checkIntervalMs = check_interval * 1000;
 
   const notify = buildNotifier(config.notify, log);
@@ -49,35 +49,48 @@ function run({ configPath, dryRun }) {
   log(`Starting monitor (config: ${configPath})`);
   log(`Monitoring ports: ${ports.join(', ')}`);
   log(`Check interval: ${check_interval}s | Grace checks: ${grace_checks}`);
+  if (skip_connectivity_ports?.length > 0) {
+    log(`Skipping connectivity test for ports: ${skip_connectivity_ports.join(', ')}`);
+  }
   if (dryRun) log('DRY RUN mode – shutdown will be logged but not executed');
 
   let idleCount = 0;
+  let lastDeadCount = 0;
 
   async function check() {
     let result;
 
     try {
-      result = checkPorts(ports);
+      result = await checkPorts(ports, { skipConnectivityPorts: skip_connectivity_ports || [] });
     } catch (err) {
       log(`ERROR checking connections: ${err.message}`);
       notify('error', err.message);
       return;
     }
 
+    if (result.deadConnections > 0) {
+      if (result.deadConnections !== lastDeadCount) {
+        log(`Dead/dying connections detected: ${result.deadConnections}`);
+        if (result.unreachablePorts.length > 0) {
+          log(`Unreachable ports (failed connectivity test): ${result.unreachablePorts.join(', ')}`);
+        }
+        lastDeadCount = result.deadConnections;
+      }
+    }
+
     if (result.hasActiveConnections) {
       if (idleCount > 0) {
         log(`Connection detected on port(s): ${result.activeMonitored.join(', ')} — resetting idle counter`);
-        // notify('reconnect', result.activeMonitored.join(', '));
       } else {
         log(`Active connections on port(s): ${result.activeMonitored.join(', ')}`);
       }
       idleCount = 0;
+      lastDeadCount = 0;
     } else {
       idleCount++;
 
       if (idleCount === 1) {
         log(`No active connections on any monitored port — starting grace period (${grace_checks} checks)`);
-        // notify('idle', `${grace_checks} checks`);
       }
 
       log(`Idle check ${idleCount} / ${grace_checks}`);
