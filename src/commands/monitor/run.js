@@ -65,6 +65,11 @@ function run({ configPath, dryRun }) {
     } catch (err) {
       log(`ERROR checking connections: ${err.message}`);
       notify('error', err.message);
+      // Reset idle count on error to avoid accidental shutdown during network issues
+      if (idleCount > 0) {
+        log('Resetting idle counter due to connection check error');
+        idleCount = 0;
+      }
       return;
     }
 
