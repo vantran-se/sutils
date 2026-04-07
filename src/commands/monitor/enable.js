@@ -6,7 +6,6 @@ const requireRoot = require('../../lib/requireRoot');
 
 const SERVICE_NAME = 'sutils-monitor';
 const SERVICE_PATH = `/etc/systemd/system/${SERVICE_NAME}.service`;
-const SLEEP_HOOK_PATH = `/lib/systemd/system-sleep/sutils-monitor`;
 
 function run(args) {
   requireRoot(args);
@@ -46,11 +45,6 @@ WantedBy=multi-user.target
 
   console.log(`Wrote ${SERVICE_PATH}`);
 
-  // Install sleep hook for suspend/resume handling
-  const sleepHookSrc = fs.readFileSync(path.join(__dirname, 'sleep-hook.js'), 'utf8');
-  fs.writeFileSync(SLEEP_HOOK_PATH, sleepHookSrc, { mode: 0o755 });
-  console.log(`Wrote ${SLEEP_HOOK_PATH}`);
-
   try {
     execFileSync('systemctl', ['daemon-reload'], { stdio: 'inherit' });
     execFileSync('systemctl', ['enable', SERVICE_NAME], { stdio: 'inherit' });
@@ -61,7 +55,6 @@ WantedBy=multi-user.target
 
   console.log(`\nEnabled. Run "sutils monitor start" to start it now.`);
   console.log(`Config: ${configPath}`);
-  console.log(`\nSleep hook installed - monitor will auto-restart after system suspend/resume.`);
 }
 
 module.exports = { run };
