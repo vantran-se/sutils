@@ -28,8 +28,9 @@ After=network.target
 
 [Service]
 ExecStart=${execStart}
-Restart=on-failure
+Restart=always
 RestartSec=10
+RestartForceExitStatus=0
 
 [Install]
 WantedBy=multi-user.target
