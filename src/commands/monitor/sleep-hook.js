@@ -1,53 +1,26 @@
-#!/usr/bin/env node
+#!/bin/sh
+# systemd sleep hook for sutils-monitor
+# Restarts the monitor service after system resume from suspend/hibernate
+#
+# Install as: /lib/systemd/system-sleep/sutils-monitor
 
-/**
- * systemd sleep hook for sutils-monitor
- * Restarts the monitor service after system resume from suspend/hibernate
- *
- * Install as: /lib/systemd/system-sleep/sutils-monitor
- */
+ACTION="$1"
+PHASE="$2"
 
-const { execSync } = require('child_process');
+# Only act on 'post' phase (after resume)
+if [ "$ACTION" != "post" ]; then
+    exit 0
+fi
 
-const SERVICE_NAME = 'sutils-monitor';
+# Log to syslog
+logger -t sutils-sleep "System resuming from $PHASE, restarting sutils-monitor..."
 
-function log(message) {
-  console.log(`[${new Date().toISOString()}] [sutils:sleep-hook] ${message}`);
-}
+# Wait for network to initialize
+sleep 2
 
-function main() {
-  const [,, action, phase] = process.argv;
+# Reset failed state and restart service
+systemctl reset-failed sutils-monitor 2>/dev/null || true
+systemctl restart sutils-monitor
 
-  // systemd passes: action (pre/post) and phase (suspend/hibernate/hybrid-sleep/suspend-then-hibernate)
-  if (!action || !phase) {
-    log('No action/phase provided - exiting');
-    return;
-  }
-
-  // Only act on 'post' phase (after resume)
-  if (action !== 'post') {
-    log(`Ignoring action=${action}, phase=${phase}`);
-    return;
-  }
-
-  log(`System resuming from ${phase}, restarting ${SERVICE_NAME}...`);
-
-  try {
-    // Wait a moment for network to initialize
-    log('Waiting 2s for network initialization...');
-    execSync('sleep 2');
-
-    // Reset failed state if any
-    execSync(`systemctl reset-failed ${SERVICE_NAME} 2>/dev/null || true`);
-
-    // Restart the service
-    execSync(`systemctl restart ${SERVICE_NAME}`, { stdio: 'inherit' });
-
-    log(`Successfully restarted ${SERVICE_NAME}`);
-  } catch (err) {
-    log(`Failed to restart service: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-main();
+logger -t sutils-sleep "Restarted sutils-monitor service"
+exit 0
