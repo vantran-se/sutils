@@ -41,7 +41,7 @@ function log(message) {
 function run({ configPath, dryRun }) {
   const config = loadConfig(configPath);
 
-  const { ports, check_interval, grace_checks, shutdown_command } = config;
+  const { ports, check_interval, grace_checks, shutdown_command, check_listening = true } = config;
   const checkIntervalMs = check_interval * 1000;
 
   const notify = buildNotifier(config.notify, log);
@@ -49,6 +49,7 @@ function run({ configPath, dryRun }) {
   log(`Starting monitor (config: ${configPath})`);
   log(`Monitoring ports: ${ports.join(', ')}`);
   log(`Check interval: ${check_interval}s | Grace checks: ${grace_checks}`);
+  log(`Check listening ports: ${check_listening}`);
   if (dryRun) log('DRY RUN mode – shutdown will be logged but not executed');
 
   let idleCount = 0;
@@ -58,7 +59,7 @@ function run({ configPath, dryRun }) {
     let result;
 
     try {
-      result = await checkPorts(ports, { idleThresholdMs: checkIntervalMs });
+      result = await checkPorts(ports, { idleThresholdMs: checkIntervalMs, checkListening: check_listening });
     } catch (err) {
       log(`ERROR checking connections: ${err.message}`);
       notify('error', err.message);

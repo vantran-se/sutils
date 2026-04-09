@@ -43,6 +43,26 @@ function getConnectionsViaNetstat() {
   return ports;
 }
 
+function getListeningPorts() {
+  try {
+    const output = execSync('ss -tln', { encoding: 'utf8' });
+    const ports = [];
+
+    for (const line of output.trim().split('\n')) {
+      if (line.includes('Local Address')) continue;
+      const match = line.match(LOCAL_PORT_RE);
+      if (match) {
+        const port = parseInt(match[1], 10);
+        if (port > 0 && port <= 65535) ports.push(port);
+      }
+    }
+
+    return ports;
+  } catch {
+    return [];
+  }
+}
+
 function getAllConnectionStates() {
   // Get all TCP connections with their states and timer info using ss -tno
   // The -o flag shows timer information including idle time
@@ -132,12 +152,14 @@ async function checkPorts(monitoredPorts, options = {}) {
     timeoutMs = 1000,
     checkConnectivity = true,
     idleThresholdMs = 30000, // connections idle longer than this are considered dead
+    checkListening = true, // consider ports active if they have a listening server
   } = options;
 
   let activePorts = [];
   let allConnections = [];
   let deadConnections = 0;
   let idleConnections = 0;
+  let listeningPorts = [];
 
   // Step 1: Get all connections with their states and idle times
   try {
@@ -175,7 +197,17 @@ async function checkPorts(monitoredPorts, options = {}) {
     }
   }
 
-  const activeMonitored = monitoredPorts.filter((p) => activePorts.includes(p));
+  // Step 1b: Also get listening ports (server sockets)
+  if (checkListening) {
+    listeningPorts = getListeningPorts();
+  }
+
+  // A port is considered active if:
+  // 1. It has an established connection (not dead/idle), OR
+  // 2. It has a listening server (checkListening option)
+  const activeMonitored = monitoredPorts.filter((p) =>
+    activePorts.includes(p) || listeningPorts.includes(p)
+  );
 
   // Step 2: Verify active connections are actually reachable
   let verifiedPorts = activeMonitored;

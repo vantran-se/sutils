@@ -13,9 +13,15 @@ shutdown_command: "sudo suspend now"
 
 # List of ports to monitor
 # Shutdown triggers only when ALL ports have zero established connections
+# or are not listening (if check_listening is enabled)
 ports:
   - 22    # SSH – someone is logged in
   - 3000  # your app port
+
+# Optional: Consider a port active if it has a listening server (not just established connections)
+# Useful for servers that accept intermittent connections
+# Default: true
+# check_listening: true
 
 # Optional: Telegram notifications
 # Events notified: monitor start, idle detected, connection restored, shutdown
