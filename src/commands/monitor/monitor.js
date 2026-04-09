@@ -50,7 +50,10 @@ function getListeningPorts() {
 
     for (const line of output.trim().split('\n')) {
       if (line.includes('Local Address')) continue;
-      const match = line.match(LOCAL_PORT_RE);
+      // ss -tln format: State Recv-Q Send-Q Local Address:Port Peer Address:Port
+      // But for listening sockets, we just need to extract port from Local Address
+      // Match patterns like: *:443, 0.0.0.0:443, [::]:443, 127.0.0.1:443
+      const match = line.match(/[:\[]([\d]+)\s+\S+\s+LISTEN/);
       if (match) {
         const port = parseInt(match[1], 10);
         if (port > 0 && port <= 65535) ports.push(port);
@@ -200,6 +203,7 @@ async function checkPorts(monitoredPorts, options = {}) {
   // Step 1b: Also get listening ports (server sockets)
   if (checkListening) {
     listeningPorts = getListeningPorts();
+    console.log(`Debug: Listening ports detected: ${listeningPorts.join(', ')}`);
   }
 
   // A port is considered active if:
