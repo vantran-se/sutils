@@ -131,8 +131,7 @@ async function checkPorts(monitoredPorts, options = {}) {
   const {
     timeoutMs = 1000,
     checkConnectivity = true,
-    skipConnectivityPorts = [],
-    idleThresholdMs = 30000, // 30 seconds - connections idle longer than this are considered dead
+    idleThresholdMs = 30000, // connections idle longer than this are considered dead
   } = options;
 
   let activePorts = [];
@@ -154,17 +153,9 @@ async function checkPorts(monitoredPorts, options = {}) {
       (conn) => conn.idleMs > idleThresholdMs
     ).length;
 
-    // Active ports = connections that are:
-    // 1. Not in a dead state
-    // 2. Not idle for too long (unless port is in skipConnectivityPorts)
+    // Active ports = connections that are not in a dead state and not idle for too long
     activePorts = healthyConnections
-      .filter((conn) => {
-        if (skipConnectivityPorts.includes(conn.port)) {
-          // For skipped ports, only check state, not idle time
-          return true;
-        }
-        return conn.idleMs <= idleThresholdMs;
-      })
+      .filter((conn) => conn.idleMs <= idleThresholdMs)
       .map((conn) => conn.port);
 
     deadConnections = allConnections.filter((conn) =>
@@ -191,27 +182,13 @@ async function checkPorts(monitoredPorts, options = {}) {
   let unreachablePorts = [];
 
   if (checkConnectivity && activeMonitored.length > 0) {
-    const portsToTest = activeMonitored.filter(
-      (p) => !skipConnectivityPorts.includes(p)
-    );
-    const portsSkipped = activeMonitored.filter((p) =>
-      skipConnectivityPorts.includes(p)
-    );
-
-    // Skipped ports are considered reachable if they're in activeMonitored
-    verifiedPorts = [...portsSkipped];
-
-    if (portsToTest.length > 0) {
-      const connectivityResults = await checkPortConnectivity(portsToTest, timeoutMs);
-      verifiedPorts.push(
-        ...connectivityResults
-          .filter((r) => r.reachable)
-          .map((r) => r.port)
-      );
-      unreachablePorts = connectivityResults
-        .filter((r) => !r.reachable)
-        .map((r) => r.port);
-    }
+    const connectivityResults = await checkPortConnectivity(activeMonitored, timeoutMs);
+    verifiedPorts = connectivityResults
+      .filter((r) => r.reachable)
+      .map((r) => r.port);
+    unreachablePorts = connectivityResults
+      .filter((r) => !r.reachable)
+      .map((r) => r.port);
   }
 
   return {
